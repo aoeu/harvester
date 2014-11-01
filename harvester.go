@@ -18,7 +18,8 @@ func Download(url string) (body []byte, err error) {
 	return
 }
 
-func ThrottledDownload(url string, result chan<- []byte, errors chan<- error, throttle chan<- bool) {
+func ThrottledDownload(url string, result chan<- []byte, errors chan<- error,
+	throttle chan<- bool) {
 	body, err := Download(url)
 	if err != nil {
 		errors <- err
@@ -26,4 +27,16 @@ func ThrottledDownload(url string, result chan<- []byte, errors chan<- error, th
 	}
 	result <- body
 	throttle <- true
+}
+
+func ParallelDownload(urls <-chan string, results chan<- []byte,
+	errors chan<- error, numGoRoutines int) {
+	throttle := make(chan bool, numGoRoutines)
+	for i := 0; i < numGoRoutines; i++ {
+		throttle <- true
+	}
+	for url := range urls {
+		<-throttle
+		go ThrottledDownload(url, results, errors, throttle)
+	}
 }

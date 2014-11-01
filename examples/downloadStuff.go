@@ -16,26 +16,27 @@ func check(err error) {
 }
 
 func main() {
-	results := make(chan []byte)
-	errors := make(chan error)
-
+	// Initialize.
 	file, err := os.Open("urls.txt")
 	check(err)
+	urls := make(chan string)
+	results := make(chan []byte)
+	errors := make(chan error)
+	maxGoRoutines := 3
 
-	throttleSize := 3
-	throttle := make(chan bool, throttleSize)
-	for i := 0; i < throttleSize; i++ {
-		throttle <- true
-	}
+	// Set up downloader.
+	go harvester.ParallelDownload(urls, results, errors, maxGoRoutines)
+
+	// Obtain URLs to download.
 	go func() {
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
-			url := scanner.Text()
-			<-throttle
-			go harvester.ThrottledDownload(url, results, errors, throttle)
+			urls <- scanner.Text()
 		}
+		close(urls)
 	}()
 
+	// Process results.
 	timeoutLength := 3 * time.Second
 	timeout := time.After(timeoutLength)
 	ever := true
@@ -44,7 +45,7 @@ func main() {
 		case err := <-errors:
 			log.Fatal(err)
 		case result := <-results:
-			fmt.Println(result)
+			fmt.Println(string(result[0:79]))
 			timeout = time.After(timeoutLength)
 		case <-timeout:
 			ever = false
