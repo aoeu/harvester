@@ -1,11 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"harvester"
 	"log"
-"os"
-"bufio"
+	"os"
 )
 
 func check(err error) {
@@ -20,7 +20,7 @@ func main() {
 	check(err)
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		url :=  scanner.Text()
+		url := scanner.Text()
 		p := harvester.NewPayload(url)
 		err := p.Download()
 		check(err)
