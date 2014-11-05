@@ -46,6 +46,11 @@ func main() {
 			log.Fatal(err)
 		case result := <-results:
 			fmt.Println(string(result[0:79]))
+			urls, err := harvester.ScrapeURLs(result)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Println(len(urls), "URLs found in page.")
 			timeout = time.After(timeoutLength)
 		case <-timeout:
 			ever = false

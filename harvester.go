@@ -1,12 +1,14 @@
 package harvester
 
 import (
+	"bytes"
+	"github.com/PuerkitoBio/goquery"
 	"io/ioutil"
 	"net/http"
 )
 
-func Download(url string) (body []byte, err error) {
-	resp, err := http.Get(url)
+func Download(URL string) (body []byte, err error) {
+	resp, err := http.Get(URL)
 	if err != nil {
 		return
 	}
@@ -18,9 +20,9 @@ func Download(url string) (body []byte, err error) {
 	return
 }
 
-func ThrottledDownload(url string, result chan<- []byte, errors chan<- error,
+func ThrottledDownload(URL string, result chan<- []byte, errors chan<- error,
 	throttle chan<- bool) {
-	body, err := Download(url)
+	body, err := Download(URL)
 	if err != nil {
 		errors <- err
 		return
@@ -29,14 +31,36 @@ func ThrottledDownload(url string, result chan<- []byte, errors chan<- error,
 	throttle <- true
 }
 
-func ParallelDownload(urls <-chan string, results chan<- []byte,
+func ParallelDownload(URLs <-chan string, results chan<- []byte,
 	errors chan<- error, numGoRoutines int) {
 	throttle := make(chan bool, numGoRoutines)
 	for i := 0; i < numGoRoutines; i++ {
 		throttle <- true
 	}
-	for url := range urls {
+	for URL := range URLs {
 		<-throttle
-		go ThrottledDownload(url, results, errors, throttle)
+		go ThrottledDownload(URL, results, errors, throttle)
 	}
+}
+
+func ScrapeURLs(body []byte) (URLs []string, err error) {
+	reader := bytes.NewReader(body)
+	doc, err := goquery.NewDocumentFromReader(reader)
+	if err != nil {
+		return
+	}
+	doc.Find("a").Each(func(i int, s *goquery.Selection) {
+		URL, ok := s.Attr("href")
+		if ok && ValidateURL(URL) {
+			URLs = append(URLs, URL)
+		}
+	})
+	return
+}
+
+func ValidateURL(URL string) bool {
+	if URL != "#" {
+		return true
+	}
+	return false
 }
