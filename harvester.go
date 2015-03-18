@@ -5,10 +5,17 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 )
 
+
 func Download(URL string) (body []byte, err error) {
-	resp, err := http.Get(URL)
+	u, err := url.ParseRequestURI(URL)
+	if err != nil {
+		// TODO(aoeu): Don't use naked returns.
+		return
+	}
+	resp, err := http.Get(u.String())
 	if err != nil {
 		return
 	}
